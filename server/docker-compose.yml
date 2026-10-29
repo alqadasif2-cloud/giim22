@@ -1,0 +1,25 @@
+# تشغيل الخادم على VPS مع HTTPS تلقائي عبر Caddy.
+# 1) أنشئ ملف .env بجانب هذا الملف (انظر .env.example) وأضف DOMAIN=assistant.example.com
+# 2) docker compose up -d
+services:
+  app:
+    build: .
+    env_file: .env
+    environment:
+      DB_PATH: /data/assistant.db
+    volumes:
+      - appdata:/data
+    restart: unless-stopped
+  caddy:
+    image: caddy:2
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN}
+    command: caddy reverse-proxy --from ${DOMAIN} --to app:8080
+    volumes:
+      - caddydata:/data
+    depends_on: [app]
+    restart: unless-stopped
+volumes:
+  appdata:
+  caddydata:

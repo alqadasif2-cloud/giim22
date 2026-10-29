@@ -1,0 +1,7 @@
+websockets==13.1
+requests==2.32.3
+mss==9.0.2
+Pillow==10.4.0
+pywinauto==0.6.8
+send2trash==1.8.3
+pywin32>=306; sys_platform == 'win32'

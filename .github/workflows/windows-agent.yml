@@ -2,6 +2,8 @@ name: Build Windows Agent (EXE)
 on:
   push:
     paths: ["agent/**", ".github/workflows/windows-agent.yml"]
+  pull_request:
+    paths: ["agent/**", ".github/workflows/windows-agent.yml"]
   workflow_dispatch:
 
 jobs:
@@ -10,24 +12,50 @@ jobs:
     defaults:
       run:
         working-directory: agent
+        shell: bash
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.11"
+          cache: "pip"
+
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt pyinstaller
-      - name: Unit tests
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt pyinstaller pywin32
+
+      - name: Run unit tests
         run: python -m unittest discover -s tests -t .
-      - name: Build EXE
-        run: >
-          pyinstaller --onefile --name WinAssistantAgent
-          --hidden-import comtypes --hidden-import comtypes.client
-          --collect-submodules pywinauto
-          main.py
-      - uses: actions/upload-artifact@v4
+
+      - name: Build EXE with PyInstaller
+        run: |
+          pyinstaller --noconfirm --clean --onefile \
+            --name WinAssistantAgent \
+            --paths . \
+            --collect-all winagent \
+            --collect-all pywinauto \
+            --hidden-import comtypes \
+            --hidden-import comtypes.client \
+            --hidden-import comtypes.stream \
+            --hidden-import win32timezone \
+            --hidden-import pywintypes \
+            --hidden-import win32gui \
+            --hidden-import win32con \
+            --hidden-import win32api \
+            main.py
+
+      - name: Verify build output
+        run: |
+          ls -la dist/
+          test -f dist/WinAssistantAgent.exe
+
+      - name: Upload EXE artifact
+        uses: actions/upload-artifact@v4
         with:
           name: WinAssistantAgent-exe
           path: agent/dist/WinAssistantAgent.exe
+          if-no-files-found: error
