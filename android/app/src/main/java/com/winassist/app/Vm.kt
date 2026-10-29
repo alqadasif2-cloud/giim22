@@ -48,6 +48,8 @@ class MainVm(app: Application) : AndroidViewModel(app) {
     var confirm by mutableStateOf<Confirm?>(null)
     var authError by mutableStateOf("")
     var authBusy by mutableStateOf(false)
+    var testResult by mutableStateOf("")
+    var testingConnection by mutableStateOf(false)
     var pairCode by mutableStateOf("")
     var input by mutableStateOf("")
 
@@ -64,10 +66,37 @@ class MainVm(app: Application) : AndroidViewModel(app) {
 
     init { if (loggedIn) startConnection() }
 
+    // ---------------- فحص الاتصال ----------------
+    fun testConnection(serverUrl: String) {
+        val url = serverUrl.trim().trimEnd('/')
+        if (url.isEmpty()) { testResult = "أدخل عنوان الخادم أولاً"; return }
+        testingConnection = true
+        testResult = "جارٍ فحص الاتصال بالخادم..."
+        viewModelScope.launch {
+            try {
+                val j = apiGet(url, "/health")
+                testResult = if (j.optBoolean("ok", false)) "✓ الاتصال بالخادم ناجح (200 OK)"
+                             else "✓ استجاب الخادم بنجاح"
+            } catch (e: Exception) {
+                testResult = "✗ تعذر الوصول إلى الخادم: ${e.message}"
+            }
+            testingConnection = false
+        }
+    }
+
     // ---------------- الحساب ----------------
     fun auth(register: Boolean, serverUrl: String, email: String, password: String) {
         val url = serverUrl.trim().trimEnd('/')
-        if (!url.startsWith("https://")) { authError = "عنوان الخادم يجب أن يبدأ بـ https://"; return }
+        val isLocal = url.startsWith("http://192.168.") ||
+                      url.startsWith("http://10.") ||
+                      url.startsWith("http://172.") ||
+                      url.startsWith("http://127.0.0.1") ||
+                      url.startsWith("http://localhost") ||
+                      url.startsWith("http://10.0.2.2")
+        if (!url.startsWith("https://") && !isLocal) {
+            authError = "يجب استخدام https:// للخوادم العامة أو http:// للشبكة المحلية (192.168.x.x)"
+            return
+        }
         authBusy = true; authError = ""
         viewModelScope.launch {
             try {

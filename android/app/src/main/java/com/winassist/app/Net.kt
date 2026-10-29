@@ -49,6 +49,27 @@ suspend fun apiPost(base: String, path: String, body: JSONObject? = null, token:
         }
     }
 
+suspend fun apiGet(base: String, path: String, token: String? = null): JSONObject =
+    withContext(Dispatchers.IO) {
+        val req = Request.Builder()
+            .url(base.trimEnd('/') + path)
+            .get()
+            .apply { if (token != null) header("Authorization", "Bearer $token") }
+            .build()
+        try {
+            rest.newCall(req).execute().use { r: Response ->
+                val txt = r.body?.string() ?: "{}"
+                val j = try { JSONObject(txt) } catch (e: Exception) { JSONObject() }
+                if (!r.isSuccessful) throw ApiException(j.optString("detail", "خطأ من الخادم (${r.code})"))
+                j
+            }
+        } catch (e: ApiException) {
+            throw e
+        } catch (e: Exception) {
+            throw ApiException("تعذر الوصول إلى الخادم: ${e.message}")
+        }
+    }
+
 class PhoneSocket(
     private val base: String,
     private val token: String,

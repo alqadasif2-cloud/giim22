@@ -61,7 +61,7 @@ private val Red = Color(0xFFC62828)
 
 @Composable
 fun LoginScreen(vm: MainVm) {
-    var server by remember { mutableStateOf(vm.server) }
+    var server by remember { mutableStateOf(vm.server.ifEmpty { "http://192.168.0.169:8000" }) }
     var email by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
     Column(
@@ -70,12 +70,26 @@ fun LoginScreen(vm: MainVm) {
         verticalArrangement = Arrangement.Center,
     ) {
         Text("مساعد التحكم بويندوز", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onBackground)
-        Text("سجّل الدخول للتحكم بكمبيوترك من الهاتف", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        OutlinedTextField(server, { server = it }, label = { Text("عنوان الخادم (https://…)") },
+        Text("سجّل الدخول للتحكم بكمبيوترك من الهاتف عبر Wi-Fi أو الإنترنت", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        OutlinedTextField(server, { server = it }, label = { Text("عنوان الخادم (http://192.168.0.169:8000 أو https://…)") },
             singleLine = true, modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri))
+        
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = { vm.testConnection(server) }, enabled = !vm.testingConnection) {
+                Text(if (vm.testingConnection) "جارٍ الفحص…" else "فحص الاتصال بالخادم")
+            }
+            if (vm.testResult.isNotEmpty()) {
+                Text(
+                    vm.testResult,
+                    color = if (vm.testResult.startsWith("✓")) Green else Red,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+
         OutlinedTextField(email, { email = it }, label = { Text("البريد الإلكتروني") },
-            singleLine = true, modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            singleLine = true, modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
         OutlinedTextField(pass, { pass = it }, label = { Text("كلمة المرور (8 أحرف على الأقل)") },
             singleLine = true, visualTransformation = PasswordVisualTransformation(),

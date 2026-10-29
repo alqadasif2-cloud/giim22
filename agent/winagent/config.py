@@ -33,20 +33,37 @@ def _protect(data: bytes, decrypt=False) -> bytes:
 
 def save(cfg: dict):
     os.makedirs(os.path.dirname(PATH), exist_ok=True)
-    with open(PATH, "wb") as f:
-        f.write(_protect(json.dumps(cfg).encode()))
+    try:
+        protected = _protect(json.dumps(cfg).encode())
+        with open(PATH, "wb") as f:
+            f.write(protected)
+    except Exception:
+        fallback_path = PATH + ".json"
+        with open(fallback_path, "w", encoding="utf-8") as f:
+            json.dump(cfg, f)
 
 
 def load() -> dict | None:
     try:
-        with open(PATH, "rb") as f:
-            return json.loads(_protect(f.read(), decrypt=True))
+        if os.path.exists(PATH):
+            with open(PATH, "rb") as f:
+                return json.loads(_protect(f.read(), decrypt=True))
     except Exception:
-        return None
+        pass
+    fallback_path = PATH + ".json"
+    if os.path.exists(fallback_path):
+        try:
+            with open(fallback_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return None
 
 
 def clear():
-    try:
-        os.remove(PATH)
-    except OSError:
-        pass
+    for p in (PATH, PATH + ".json"):
+        try:
+            if os.path.exists(p):
+                os.remove(p)
+        except OSError:
+            pass

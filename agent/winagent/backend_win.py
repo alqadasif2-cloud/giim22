@@ -120,7 +120,7 @@ class WindowsBackend:
                 subprocess.Popen(["cmd", "/c", "start", "", target], shell=False)
         except Exception as e:
             raise StepError(f"تعذر تشغيل {name}: {e}")
-        end = time.time() + 12
+        end = time.time() + 10
         while time.time() < end:
             if cancel is not None and cancel.is_set():
                 raise Cancelled()
@@ -128,8 +128,20 @@ class WindowsBackend:
             if new:
                 self.last_window_title = new[0].window_text()
                 return f"تم فتح {name} (نافذة: {self.last_window_title})"
-            time.sleep(0.5)
-        raise StepError(f"أُرسل أمر تشغيل {name} لكن لم تظهر نافذة جديدة خلال 12 ثانية")
+            time.sleep(0.4)
+
+        # إذا كان البرنامج مفتوحاً مسبقاً، ركّز على نافذته بدل الفشل
+        for w in _windows():
+            w_text = w.window_text().lower()
+            if key in w_text or (APPS.get(key, "").replace(".exe", "") in w_text and w_text):
+                try:
+                    w.set_focus()
+                    self.last_window_title = w.window_text()
+                    return f"البرنامج {name} مفتوح مسبقاً، تم التركيز عليه ({self.last_window_title})"
+                except Exception:
+                    pass
+
+        raise StepError(f"أُرسل أمر تشغيل {name} لكن لم تظهر نافذة جديدة خلال 10 ثوانٍ")
 
     def open_url(self, url: str, cancel=None, **_):
         if not str(url).startswith(("http://", "https://")):

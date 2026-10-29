@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  * 
- * دليل تشغيل وربط وكيل Windows الحقيقي وتطبيق Android
+ * دليل تشغيل وربط وكيل Windows الحقيقي والخادم المحلي وتطبيق Android
  */
 
 import React, { useState } from 'react';
@@ -15,8 +15,11 @@ import {
   Smartphone,
   Monitor,
   Server,
-  ExternalLink,
-  Key,
+  Wifi,
+  AlertTriangle,
+  Play,
+  FileCode,
+  ShieldCheck,
 } from 'lucide-react';
 
 export const RealAgentInstructions: React.FC = () => {
@@ -28,16 +31,13 @@ export const RealAgentInstructions: React.FC = () => {
     setTimeout(() => setCopiedSection(null), 2000);
   };
 
-  const agentRequirements = `fastapi==0.115.0
-uvicorn[standard]==0.30.6
-httpx==0.27.2
-PyJWT==2.9.0
-pywinauto==0.6.9
-pillow==11.0.0
-websockets==13.1`;
+  const localIp = '192.168.0.169';
+  const localPort = '8000';
+  const localServerUrl = `http://${localIp}:${localPort}`;
 
-  const pairingCommand = `python main.py pair --server ${window.location.origin} --code 12345678
-python main.py run`;
+  const firewallCmd = `netsh advfirewall firewall add rule name="WinAssistant Server" dir=in action=allow protocol=TCP localport=${localPort}`;
+  const pairingCmd = `WinAssistantAgent.exe pair --server ${localServerUrl} --code 12345678`;
+  const runCmd = `WinAssistantAgent.exe run`;
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6 font-['Cairo',sans-serif] text-slate-200">
@@ -48,104 +48,160 @@ python main.py run`;
             <Monitor className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-100">ربط كمبيوتر Windows حقيقي (Physical Agent)</h2>
+            <h2 className="text-lg font-bold text-slate-100">
+              دليل الربط المحلي عبر Wi-Fi (192.168.0.169) وحل مشكلة اختفاء نافذة الوكيل
+            </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              يمكنك تشغيل وكيل بايثون على كمبيوترك الفعلي وربطه بهذا الخادم للتحكم الحقيقي بنوافذ Windows.
+              كل ما تحتاجه لتشغيل الخادم والوكيل محلياً على Windows 10 وربط الهاتف دون الحاجة لشراء استضافة خارجية.
             </p>
           </div>
         </div>
       </div>
 
-      {/* 3 Components Diagram */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
-          <div className="flex items-center gap-2 text-blue-400 font-bold text-sm">
-            <Smartphone className="w-5 h-5" />
-            <span>1. تطبيق Android (أو الويب)</span>
-          </div>
-          <p className="text-xs text-slate-400 leading-relaxed">
-            واجهة المستخدم المبنية بـ Jetpack Compose. ترسل الأوامر الصوتية والنصية بالعربية وتستقبل اللقطات والبث المباشر.
-          </p>
+      {/* Root Cause Card: Why CMD window was disappearing */}
+      <div className="p-5 rounded-3xl bg-amber-950/30 border border-amber-500/30 space-y-3">
+        <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
+          <AlertTriangle className="w-5 h-5" />
+          <span>سبب اختفاء نافذة CMD فور النقر على WinAssistantAgent.exe:</span>
         </div>
-
-        <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
-          <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
-            <Server className="w-5 h-5" />
-            <span>2. الخادم + Gemini AI</span>
-          </div>
-          <p className="text-xs text-slate-400 leading-relaxed">
-            الوسيط الموجه. يترجم الأوامر العربية عبر Gemini إلى خطة آمنة، ويفحص سياسة الأمان (قائمة بيضاء)، ويحلل الشاشة.
-          </p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
-          <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
-            <Monitor className="w-5 h-5" />
-            <span>3. وكيل Windows (EXE / Python)</span>
-          </div>
-          <p className="text-xs text-slate-400 leading-relaxed">
-            يعمل داخل جلسة المستخدم في Windows، ينفّذ الخطوات بـ UI Automation، ومزود ببوابة ScreenGate تضمن خمول الشاشة.
-          </p>
+        <p className="text-xs text-slate-300 leading-relaxed">
+          السبب الرئيسي هو أن الكود الأصلي كان يطلب وسيطة فرعية إلزامية (مثل <code className="text-amber-300 font-mono">pair</code> أو <code className="text-amber-300 font-mono">run</code>).
+          عند النقر المزدوج على ملف EXE من مستكشف Windows، يتم تشغيله بدون وسائط، مما كان يجعل مكتبة <code className="text-amber-300 font-mono">argparse</code> تظهر رسالة المساعدة وتنهي البرنامج فوراً (<code className="text-amber-300 font-mono">exit(2)</code>)، فتغلق Windows نافذة CMD في جزء من الثانية!
+        </p>
+        <div className="text-xs text-emerald-400 font-semibold flex items-center gap-1.5 pt-1">
+          <Check className="w-4 h-4" />
+          <span>تم إصلاح ذلك جذرياً: أصبح البرنامج يعرض واجهة تفاعلية عند النقر المزدوج، ويسجل الأخطاء في ملف agent.log، وينتظر ضغط Enter قبل الإغلاق.</span>
         </div>
       </div>
 
-      {/* Step by Step Execution on Windows */}
+      {/* 3 Step Workflow */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Step 1: Server */}
+        <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 space-y-3 flex flex-col justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+              <Server className="w-5 h-5" />
+              <span>الخطوة 1: الخادم المحلي</span>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              شغّل الخادم على الكمبيوتر ليستمع على <code className="text-emerald-300">0.0.0.0:8000</code> ليتمكن الهاتف من الاتصال عبر شبكة Wi-Fi.
+            </p>
+          </div>
+          <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-emerald-300">
+            start_local_server.bat
+          </div>
+        </div>
+
+        {/* Step 2: Agent */}
+        <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 space-y-3 flex flex-col justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-blue-400 font-bold text-sm">
+              <Monitor className="w-5 h-5" />
+              <span>الخطوة 2: وكيل Windows</span>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              اربط الوكيل بالخادم عبر رمز الربط، ثم شغّل الوكيل داخل جلسة المستخدم المفتوحة.
+            </p>
+          </div>
+          <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-blue-300">
+            start_agent.bat
+          </div>
+        </div>
+
+        {/* Step 3: Android App */}
+        <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 space-y-3 flex flex-col justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-fuchsia-400 font-bold text-sm">
+              <Smartphone className="w-5 h-5" />
+              <span>الخطوة 3: هاتف Android</span>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              افتح التطبيق، وافحص الاتصال بعنوان <code className="text-fuchsia-300">{localServerUrl}</code>، ثم سجّل الدخول واستخرج رمز الربط.
+            </p>
+          </div>
+          <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-fuchsia-300">
+            فحص الاتصال ➔ دخول ➔ ربط
+          </div>
+        </div>
+      </div>
+
+      {/* Terminal Commands Guide */}
       <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-5">
         <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
           <Terminal className="w-4 h-4 text-blue-400" />
-          <span>خطوات تشغيل الوكيل على جهازك:</span>
+          <span>الأوامر الجاهزة لتشغيل المنظومة محلياً (CMD / PowerShell):</span>
         </h3>
 
-        {/* Step 1 */}
+        {/* 1. Firewall */}
         <div className="space-y-2">
-          <div className="text-xs font-semibold text-slate-300">
-            أولاً: إنشاء رمز ربط (Pair Code)
-          </div>
-          <p className="text-xs text-slate-400">
-            من واجهة الهاتف (أو زر الإعدادات)، اضغط على "إنشاء رمز ربط". ستحصل على رمز مكون من 8 أرقام صالح لمدة 5 دقائق لمرة واحدة.
-          </p>
-        </div>
-
-        {/* Step 2 */}
-        <div className="space-y-2">
-          <div className="text-xs font-semibold text-slate-300">
-            ثانياً: ربط الوكيل عبر موجه الأوامر (CMD أو PowerShell)
+          <div className="text-xs font-semibold text-slate-300 flex items-center justify-between">
+            <span>أ) فتح المنفذ 8000 في جدار حماية Windows (مهم جداً للـ Wi-Fi):</span>
+            <span className="text-[10px] text-slate-500">تشغيل CMD كمسؤول (Run as Admin)</span>
           </div>
           <div className="relative">
-            <pre className="p-3 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-emerald-300 overflow-x-auto" dir="ltr">
-              {pairingCommand}
+            <pre className="p-3 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-amber-300 overflow-x-auto" dir="ltr">
+              {firewallCmd}
             </pre>
             <button
-              onClick={() => copyToClipboard(pairingCommand, 'pair-cmd')}
+              onClick={() => copyToClipboard(firewallCmd, 'fw-cmd')}
               className="absolute top-2 right-2 p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
-              title="نسخ الأمر"
+              title="نسخ"
+            >
+              {copiedSection === 'fw-cmd' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+        </div>
+
+        {/* 2. Pairing command */}
+        <div className="space-y-2">
+          <div className="text-xs font-semibold text-slate-300">
+            ب) أمر ربط الوكيل (استبدل 12345678 بالرمز الظاهر في تطبيق الهاتف):
+          </div>
+          <div className="relative">
+            <pre className="p-3 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-blue-300 overflow-x-auto" dir="ltr">
+              {pairingCmd}
+            </pre>
+            <button
+              onClick={() => copyToClipboard(pairingCmd, 'pair-cmd')}
+              className="absolute top-2 right-2 p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
+              title="نسخ"
             >
               {copiedSection === 'pair-cmd' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
             </button>
           </div>
         </div>
 
-        {/* Step 3 */}
+        {/* 3. Run command */}
         <div className="space-y-2">
           <div className="text-xs font-semibold text-slate-300">
-            ثالثاً: تشغيل الوكيل تلقائياً مع بدء تشغيل Windows
+            ج) أمر تشغيل الوكيل بعد الربط:
           </div>
-          <p className="text-xs text-slate-400 leading-relaxed">
-            من Task Scheduler في Windows، أنشئ مهمة عند تسجيل الدخول (At Log on) لتشغيل الوكيل داخل جلسة المستخدم، لأن التحكم بالواجهات يتطلب سطح مكتب مرئي.
-          </p>
+          <div className="relative">
+            <pre className="p-3 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-emerald-300 overflow-x-auto" dir="ltr">
+              {runCmd}
+            </pre>
+            <button
+              onClick={() => copyToClipboard(runCmd, 'run-cmd')}
+              className="absolute top-2 right-2 p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
+              title="نسخ"
+            >
+              {copiedSection === 'run-cmd' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* ScreenGate Guarantee Card */}
       <div className="p-5 rounded-3xl bg-emerald-950/30 border border-emerald-500/30 space-y-3">
         <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
-          <Shield className="w-5 h-5" />
-          <span>كيف تضمن بوابة الشاشة (ScreenGate) الخمول والخصوصية؟</span>
+          <ShieldCheck className="w-5 h-5" />
+          <span>ضمانات خصوصية الشاشة (ScreenGate):</span>
         </div>
         <ul className="text-xs text-slate-300 space-y-1.5 list-disc list-inside leading-relaxed">
-          <li><strong>الأصل الخامل:</strong> لا يمكن لأي عملية التقاط أي إطار ما لم يوجد ترخيص ساري المفعول (Lease). بدون ترخيص ترفع الدالة استثناء <code className="text-emerald-300">ScreenLocked</code>.</li>
-          <li><strong>تراخيص محددة فقط:</strong> لقطة مفردة صريحة بطلبك، أو لقطة تحقق محصورة داخل مهمة، أو بث مباشر يُلغى فور طلب الإيقاف أو انقطاع الاتصال.</li>
-          <li><strong>حماية ضد حقن التعليمات:</strong> محرك Gemini لا يرى شاشة المستخدم أثناء التخطيط للأوامر إطلاقاً؛ التخطيط يعتمد فقط على نص الأمر العربي وليس على بيانات النوافذ.</li>
+          <li><strong>لا تصوير عند الخمول:</strong> الوكيل يكون في وضع الخمول تماماً ولا يلتقط أي إطار ولا يراقب الشاشة إطلاقاً عند بدء التشغيل.</li>
+          <li><strong>تراخيص محددة وصريحة:</strong> لا يمكن للمكتبة التقاط أي صورة ما لم تمنح بوابة ScreenGate ترخيصاً سارياً (Lease).</li>
+          <li><strong>إلغاء فوري وسحب التراخيص:</strong> عند انتهاء المهمة أو ضغط "إيقاف المهمة" أو انقطاع الهاتف تُسحب كل التراخيص فوراً.</li>
+          <li><strong>الذكاء الاصطناعي لا يرى الشاشة للتخطيط:</strong> أوامر التحكم تُخطط بناءً على النص العربي فقط دون إرسال الشاشة للذكاء الاصطناعي، وتحليل الشاشة لا يحدث إلا بطلبك الصريح عبر زر "تحليل الشاشة".</li>
         </ul>
       </div>
     </div>
