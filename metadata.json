@@ -1,0 +1,6 @@
+{
+  "name": "WinAssistant - مساعد التحكم بويندوز عن بعد",
+  "description": "تحكّم بجهاز Windows من هاتفك أو المتصفح بأوامر صوتية ونصية عربية مدعومة بذكاء Gemini مع بوابة حماية الشاشة ScreenGate",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

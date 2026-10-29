@@ -1,0 +1,33 @@
+name: Build Android APK
+on:
+  push:
+    paths: ["android/**", ".github/workflows/android.yml"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Build debug APK
+        working-directory: android
+        run: gradle assembleDebug --stacktrace
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: WinAssistant-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+      - name: Upload build reports (on failure too)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-build-reports
+          path: android/app/build/reports
+          if-no-files-found: ignore
